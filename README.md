@@ -6,6 +6,17 @@ Includes a Vite + React + TypeScript frontend.
 
 ---
 
+## Live Demo
+
+- **Frontend:** https://clinic-booking-api-neon.vercel.app/
+- **Backend API:** https://clinic-booking-api-le71.onrender.com/
+- **Interactive API documentation:** https://clinic-booking-api-le71.onrender.com/docs
+- **Health check:** https://clinic-booking-api-le71.onrender.com/health
+
+The application uses a React frontend, a FastAPI backend, and PostgreSQL for persistent storage. The live deployment is intended for demonstration and assessment purposes.
+
+---
+
 ## System Design
 
 **Stack**
@@ -138,7 +149,8 @@ curl -X PATCH http://127.0.0.1:8000/appointments/1/cancel \
 **Backend**
 
 ```bash
-git clone <REPO_URL> && cd clinic-booking-api
+git clone https://github.com/alvinplp2024/clinic-booking-api.git
+cd clinic-booking-api
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -203,18 +215,42 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push and PR to `main`:
 3. Runs the full backend test suite
 4. Runs `npm ci`, `npm run lint`, `npm run build` in `frontend/`
 
-**Deployment**
+### Deployment
 
-- Backend deploys to Render (or any platform supporting Python + PostgreSQL).
-- Frontend deploys to Vercel.
+**Live services**
 
-After deploying the backend:
+- Backend: Render
+- Database: Neon PostgreSQL
+- Frontend: Vercel
 
-1. Set `DATABASE_URL` and `ALLOWED_ORIGINS` as environment variables.
-2. Run `alembic upgrade head` as a deploy step.
-3. Point health checks at `/health`.
+**Backend configuration**
 
-On Vercel, set `VITE_API_BASE_URL` to the deployed backend URL.
+Configure these environment variables in Render:
+
+- `DATABASE_URL` — PostgreSQL connection URL.
+- `ALLOWED_ORIGINS` — the permitted frontend origin.
+- `APP_ENV` - production.
+- `TIMEZONE` - Africa/Nairobi.
+
+Database migrations are applied before the application starts using the configured Render start command:
+
+```bash
+alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+**Frontend configuration**
+
+Set the Vercel environment variable `VITE_API_BASE_URL` to:
+
+`https://clinic-booking-api-le71.onrender.com`
+
+The frontend must be redeployed after changing its production environment variables.
+
+**Continuous integration**
+
+GitHub Actions runs backend migrations, migration consistency checks, backend tests, frontend linting, and the frontend production build on pushes and pull requests targeting `main`.
+
+Render is configured to deploy on commit. This setting does not, by itself, guarantee that deployment waits for the GitHub Actions workflow to pass. CI-gated deployment remains a potential improvement.
 
 ---
 
