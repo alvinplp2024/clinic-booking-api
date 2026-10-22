@@ -121,8 +121,10 @@ export function Appointments() {
     }
   }
 
-  const booked = (apptData?.filter((a) => a.status === 'booked') ?? []).slice().reverse()
-  const cancelled = (apptData?.filter((a) => a.status === 'cancelled') ?? []).slice().reverse()
+  const now = new Date()
+  const upcoming = (apptData ?? []).filter((a) => a.status === 'booked' && new Date(a.start_time) >= now)
+  const past = (apptData ?? []).filter((a) => a.status === 'booked' && new Date(a.start_time) < now).reverse()
+  const cancelled = (apptData ?? []).filter((a) => a.status === 'cancelled').reverse()
 
   return (
     <div className="p-6 space-y-6">
@@ -160,43 +162,51 @@ export function Appointments() {
         )}
 
         {apptData !== null && !apptLoading && apptData.length > 0 && (
-          <div className="space-y-5">
-            {/* Booked */}
-            {booked.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  Booked · {booked.length}
-                </p>
-                <ul className="divide-y divide-gray-100">
-                  {booked.map((appt) => (
-                    <AppointmentRow
-                      key={appt.id}
-                      appt={appt}
-                      onView={() => setViewTarget(appt)}
-                      onCancel={() => openCancel(appt)}
-                      onReschedule={() => openReschedule(appt)}
-                    />
-                  ))}
-                </ul>
-              </div>
+          <div className="space-y-6">
+            {/* Upcoming */}
+            <Section
+              title="Upcoming"
+              count={upcoming.length}
+              emptyText="No upcoming appointments."
+              accent="teal"
+            >
+              {upcoming.map((appt) => (
+                <AppointmentRow
+                  key={appt.id}
+                  appt={appt}
+                  onView={() => setViewTarget(appt)}
+                  onCancel={() => openCancel(appt)}
+                  onReschedule={() => openReschedule(appt)}
+                />
+              ))}
+            </Section>
+
+            {/* Past booked */}
+            {past.length > 0 && (
+              <Section title="Past" count={past.length} accent="gray">
+                {past.map((appt) => (
+                  <AppointmentRow
+                    key={appt.id}
+                    appt={appt}
+                    dim
+                    onView={() => setViewTarget(appt)}
+                  />
+                ))}
+              </Section>
             )}
 
             {/* Cancelled */}
             {cancelled.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  Cancelled · {cancelled.length}
-                </p>
-                <ul className="divide-y divide-gray-100">
-                  {cancelled.map((appt) => (
-                    <AppointmentRow
-                      key={appt.id}
-                      appt={appt}
-                      onView={() => setViewTarget(appt)}
-                    />
-                  ))}
-                </ul>
-              </div>
+              <Section title="Cancelled" count={cancelled.length} accent="red">
+                {cancelled.map((appt) => (
+                  <AppointmentRow
+                    key={appt.id}
+                    appt={appt}
+                    dim
+                    onView={() => setViewTarget(appt)}
+                  />
+                ))}
+              </Section>
             )}
           </div>
         )}
@@ -350,6 +360,38 @@ export function Appointments() {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+const accentStyles = {
+  teal: { bar: 'bg-teal-500', text: 'text-teal-700', badge: 'bg-teal-50 text-teal-600' },
+  gray: { bar: 'bg-gray-300', text: 'text-gray-500', badge: 'bg-gray-100 text-gray-500' },
+  red:  { bar: 'bg-red-400',  text: 'text-red-600',  badge: 'bg-red-50 text-red-500'   },
+}
+
+function Section({
+  title, count, accent, emptyText, children,
+}: {
+  title: string
+  count: number
+  accent: 'teal' | 'gray' | 'red'
+  emptyText?: string
+  children?: React.ReactNode
+}) {
+  const s = accentStyles[accent]
+  return (
+    <div className="rounded-xl border border-gray-100 bg-gray-50 overflow-hidden">
+      <div className={`flex items-center gap-3 px-4 py-3 border-b border-gray-100`}>
+        <span className={`h-3.5 w-1 rounded-full ${s.bar}`} />
+        <span className={`text-sm font-semibold ${s.text}`}>{title}</span>
+        <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${s.badge}`}>{count}</span>
+      </div>
+      {count === 0 && emptyText ? (
+        <p className="px-4 py-5 text-sm text-gray-400">{emptyText}</p>
+      ) : (
+        <ul className="divide-y divide-gray-100 bg-white">{children}</ul>
+      )}
+    </div>
+  )
+}
+
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4">
@@ -364,45 +406,54 @@ function AppointmentRow({
   onView,
   onCancel,
   onReschedule,
+  dim,
 }: {
   appt: Appointment
   onView: () => void
   onCancel?: () => void
   onReschedule?: () => void
+  dim?: boolean
 }) {
   const isCancelled = appt.status === 'cancelled'
+  const isPast = !isCancelled && new Date(appt.start_time) < new Date()
+  const badgeVariant = isCancelled ? 'red' : isPast ? 'gray' : 'teal'
+  const badgeLabel = isCancelled ? 'cancelled' : isPast ? 'completed' : 'upcoming'
   return (
-    <li className={`flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between ${isCancelled ? 'opacity-60' : ''}`}>
+    <li className={`flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
+      dim ? 'opacity-55' : ''
+    }`}>
       <div className="space-y-0.5">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-900">{formatDateTime(appt.start_time)}</span>
-          <Badge label={appt.status} variant={isCancelled ? 'red' : 'teal'} />
+          <span className={`text-sm font-medium ${dim ? 'text-gray-500' : 'text-gray-900'}`}>
+            {formatDateTime(appt.start_time)}
+          </span>
+          <Badge label={badgeLabel} variant={badgeVariant} />
         </div>
-        <p className="text-xs text-gray-500">
-          Appointment #{appt.id} · Doctor ID {appt.doctor_id}
+        <p className="text-xs text-gray-400">
+          Appt #{appt.id} · Doctor ID {appt.doctor_id}
         </p>
         {appt.cancellation_reason && (
-          <p className="text-xs text-red-500">Reason: {appt.cancellation_reason}</p>
+          <p className="text-xs text-red-400">Reason: {appt.cancellation_reason}</p>
         )}
       </div>
       <div className="flex gap-2">
         <button
           onClick={onView}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
         >
           <Eye className="h-3.5 w-3.5" />
           View
         </button>
-        {!isCancelled && onReschedule && (
+        {!isCancelled && !isPast && onReschedule && (
           <button
             onClick={onReschedule}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             Reschedule
           </button>
         )}
-        {!isCancelled && onCancel && (
+        {!isCancelled && !isPast && onCancel && (
           <button
             onClick={onCancel}
             className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"

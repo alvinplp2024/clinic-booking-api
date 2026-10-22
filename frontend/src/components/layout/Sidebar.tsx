@@ -1,4 +1,4 @@
-import { Calendar, CalendarCheck, FlaskConical, LayoutDashboard, Stethoscope } from 'lucide-react'
+import { Calendar, CalendarCheck, FlaskConical, LayoutDashboard, Stethoscope, ShieldAlert } from 'lucide-react'
 
 type Page = 'dashboard' | 'book' | 'appointments' | 'availability' | 'api-tester'
 
@@ -7,15 +7,33 @@ interface SidebarProps {
   onNavigate: (page: Page) => void
 }
 
-const nav: { id: Page; label: string; icon: React.ReactNode }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
+const patientNav: { id: Page; label: string; icon: React.ReactNode }[] = [
   { id: 'book', label: 'Book Appointment', icon: <CalendarCheck className="h-4 w-4" /> },
   { id: 'appointments', label: 'Appointments', icon: <Calendar className="h-4 w-4" /> },
   { id: 'availability', label: 'Doctor Availability', icon: <Stethoscope className="h-4 w-4" /> },
+]
+
+const adminNav: { id: Page; label: string; icon: React.ReactNode }[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
   { id: 'api-tester', label: 'API Tester', icon: <FlaskConical className="h-4 w-4" /> },
 ]
 
 export function Sidebar({ current, onNavigate }: SidebarProps) {
+  const navItem = (id: Page, label: string, icon: React.ReactNode) => (
+    <button
+      key={id}
+      onClick={() => onNavigate(id)}
+      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+        current === id
+          ? 'bg-teal-50 font-medium text-teal-700'
+          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  )
+
   return (
     <aside className="flex h-full w-56 shrink-0 flex-col border-r border-gray-200 bg-white">
       <div className="flex items-center gap-2 border-b border-gray-200 px-5 py-4">
@@ -23,23 +41,18 @@ export function Sidebar({ current, onNavigate }: SidebarProps) {
         <span className="text-sm font-semibold text-gray-900">Clinic Booking</span>
       </div>
       <nav className="flex-1 space-y-0.5 p-3">
-        {nav.map(({ id, label, icon }) => (
-          <button
-            key={id}
-            onClick={() => onNavigate(id)}
-            className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-              current === id
-                ? 'bg-teal-50 font-medium text-teal-700'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
+        <p className="flex items-center gap-1 px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-amber-500">
+          <ShieldAlert className="h-3 w-3" /> Admin / Dev
+        </p>
+        {adminNav.map(({ id, label, icon }) => navItem(id, label, icon))}
+
+        <div className="my-2 border-t border-gray-100" />
+
+        <p className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Patient</p>
+        {patientNav.map(({ id, label, icon }) => navItem(id, label, icon))}
       </nav>
       <div className="border-t border-gray-200 px-5 py-3">
-        <p className="text-xs text-gray-400">Savannah Informatics</p>
+        <p className="text-xs text-gray-400">Savannah Informatics · Dev build</p>
       </div>
     </aside>
   )
