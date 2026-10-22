@@ -1,7 +1,10 @@
+
+import json
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -12,7 +15,7 @@ class Settings(BaseSettings):
         "postgresql+psycopg://clinic_user:change_me"
         "@localhost:5432/clinic_booking"
     )
-    allowed_origins: list[str] = [
+    allowed_origins: Annotated[list[str], NoDecode] = [
         "http://localhost:5173",
         "http://localhost:4173",
     ]
@@ -21,8 +24,26 @@ class Settings(BaseSettings):
     @classmethod
     def parse_origins(cls, value: object) -> list[str]:
         if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
-        return value  # type: ignore[return-value]
+            value = value.strip()
+
+            if not value:
+                return []
+
+            if value.startswith("["):
+                parsed = json.loads(value)
+                if not isinstance(parsed, list):
+                    raise ValueError("ALLOWED_ORIGINS must be a list")
+                value = parsed
+            else:
+                value = value.split(",")
+
+        if not isinstance(value, list):
+            raise ValueError("ALLOWED_ORIGINS must be a list or comma-separated string")
+
+        if not all(isinstance(origin, str) for origin in value):
+            raise ValueError("Every allowed origin must be a string")
+
+        return [origin.strip().rstrip("/") for origin in value if origin.strip()]
 
     model_config = SettingsConfigDict(
         env_file=".env",
