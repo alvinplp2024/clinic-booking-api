@@ -250,7 +250,9 @@ The frontend must be redeployed after changing its production environment variab
 
 GitHub Actions runs backend migrations, migration consistency checks, backend tests, frontend linting, and the frontend production build on pushes and pull requests targeting `main`.
 
-Render is configured to deploy on commit. This setting does not, by itself, guarantee that deployment waits for the GitHub Actions workflow to pass. CI-gated deployment remains a potential improvement.
+Render is configured to deploy on commit. This setting does not, by itself, guarantee that deployment waits for the GitHub Actions workflow to pass. 
+
+GitHub Actions runs the backend migration checks and tests, followed by frontend linting and production build checks, on pull requests targeting `main`. GitHub branch protection requires the `Migration and test suite` status check to pass before a pull request can be merged. Render and Vercel are configured to deploy changes from `main` automatically after merge. The CI gate is enforced by GitHub branch protection rather than by a separate deployment approval step in Render.
 
 ---
 
