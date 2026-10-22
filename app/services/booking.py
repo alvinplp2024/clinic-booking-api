@@ -384,11 +384,7 @@ def get_patient_appointments(
 
     statement = (
         select(Appointment)
-        .where(
-            Appointment.patient_id == patient_id,
-            Appointment.status == "booked",
-            Appointment.start_time >= _now(),
-        )
+        .where(Appointment.patient_id == patient_id)
         .order_by(Appointment.start_time.asc())
     )
     return list(db.scalars(statement).all())

@@ -200,6 +200,8 @@ export TEST_DATABASE_URL='postgresql+psycopg://clinic_user:YOUR_PASSWORD@localho
 python -m pytest -q
 ```
 
+If your password contains special characters (`@`, `#`, `&`, etc.), percent-encode them in the URL — e.g. `@` → `%40`, `#` → `%23`, `&` → `%26`.
+
 Coverage includes: registration, contact validation, booking, conflicts, working
 hours, schedule exceptions, cancellation, rescheduling, availability, delete
 guards, CORS, and timezone handling (62 tests).
@@ -248,11 +250,9 @@ The frontend must be redeployed after changing its production environment variab
 
 **Continuous integration**
 
-GitHub Actions runs backend migrations, migration consistency checks, backend tests, frontend linting, and the frontend production build on pushes and pull requests targeting `main`.
+The `main` branch is the deployment branch. Merging into `main` triggers automatic deployment on both Render (backend) and Vercel (frontend).
 
-Render is configured to deploy on commit. This setting does not, by itself, guarantee that deployment waits for the GitHub Actions workflow to pass. 
-
-GitHub Actions runs the backend migration checks and tests, followed by frontend linting and production build checks, on pull requests targeting `main`. GitHub branch protection requires the `Migration and test suite` status check to pass before a pull request can be merged. Render and Vercel are configured to deploy changes from `main` automatically after merge. The CI gate is enforced by GitHub branch protection rather than by a separate deployment approval step in Render.
+GitHub Actions runs on every push and pull request targeting `main`: backend migrations, migration consistency checks, backend tests, frontend linting, and the frontend production build. GitHub branch protection requires the `Migration and test suite` check to pass before any PR can be merged. Render and Vercel deploy automatically after merge. The CI gate is enforced by branch protection — deployment only happens after tests pass.
 
 ---
 

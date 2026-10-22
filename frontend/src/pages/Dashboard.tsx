@@ -60,6 +60,17 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   return (
     <div className="p-6 space-y-6">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+        <span className="mt-0.5 text-lg">🛠️</span>
+        <div>
+          <p className="text-sm font-semibold text-amber-800">Admin / Developer Tool</p>
+          <p className="text-xs text-amber-700 mt-0.5">
+            This interface is for testing and administration only — not intended for patients.
+            Use the <span className="font-medium">API Tester</span> to send raw requests, or manage records below.
+          </p>
+        </div>
+      </div>
+
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
         <p className="mt-1 text-sm text-gray-500">Overview of registered doctors and patients.</p>
