@@ -42,7 +42,12 @@ def health_check() -> dict[str, str]:
     """Confirm that the API process is running."""
     return {
         "status": "ok",
+        "service": "Clinic Booking API",
+        "version": "1.0.0",
         "environment": settings.app_env,
+        "documentation": "/docs",
+        "developer": "ALVIN ONDIEKI",
+        "phone": "0700921906",
     }
 
 
