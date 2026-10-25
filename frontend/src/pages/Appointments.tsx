@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Clock, XCircle, RefreshCw, Eye } from 'lucide-react'
 import { getPatients } from '../api/patients'
 import { getPatientAppointments } from '../api/patients'
-import { cancelAppointment, rescheduleAppointment } from '../api/appointments'
+import { cancelAppointment, rescheduleAppointment, updateAppointmentStatus } from '../api/appointments'
 import { getDoctors, getDoctorAvailability } from '../api/doctors'
 import { useApi } from '../hooks/useApi'
 import { extractErrorMessage } from '../api/types'
@@ -30,6 +30,21 @@ export function Appointments() {
   const [cancelReason, setCancelReason] = useState('')
   const [cancelSubmitting, setCancelSubmitting] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
+
+  // Status update (complete / postpone)
+  const [statusUpdating, setStatusUpdating] = useState<number | null>(null)
+
+  const handleStatusUpdate = async (appt: Appointment, status: 'completed' | 'postponed') => {
+    setStatusUpdating(appt.id)
+    try {
+      await updateAppointmentStatus(appt.id, status)
+      void loadAppointments(patientId)
+    } catch {
+      // silently ignore — user can retry
+    } finally {
+      setStatusUpdating(null)
+    }
+  }
 
   // Reschedule modal
   const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null)
@@ -123,7 +138,9 @@ export function Appointments() {
 
   const now = new Date()
   const upcoming = (apptData ?? []).filter((a) => a.status === 'booked' && new Date(a.start_time) >= now)
-  const past = (apptData ?? []).filter((a) => a.status === 'booked' && new Date(a.start_time) < now).reverse()
+  const overdue = (apptData ?? []).filter((a) => a.status === 'booked' && new Date(a.start_time) < now).reverse()
+  const completed = (apptData ?? []).filter((a) => a.status === 'completed').reverse()
+  const postponed = (apptData ?? []).filter((a) => a.status === 'postponed').reverse()
   const cancelled = (apptData ?? []).filter((a) => a.status === 'cancelled').reverse()
 
   return (
@@ -181,10 +198,42 @@ export function Appointments() {
               ))}
             </Section>
 
-            {/* Past booked */}
-            {past.length > 0 && (
-              <Section title="Past" count={past.length} accent="gray">
-                {past.map((appt) => (
+            {/* Overdue booked */}
+            {overdue.length > 0 && (
+              <Section title="Overdue" count={overdue.length} accent="gray">
+                {overdue.map((appt) => (
+                  <AppointmentRow
+                    key={appt.id}
+                    appt={appt}
+                    onView={() => setViewTarget(appt)}
+                    onReschedule={() => openReschedule(appt)}
+                    onCancel={() => openCancel(appt)}
+                    onComplete={() => void handleStatusUpdate(appt, 'completed')}
+                    onPostpone={() => void handleStatusUpdate(appt, 'postponed')}
+                    statusUpdating={statusUpdating === appt.id}
+                  />
+                ))}
+              </Section>
+            )}
+
+            {/* Completed */}
+            {completed.length > 0 && (
+              <Section title="Completed" count={completed.length} accent="teal">
+                {completed.map((appt) => (
+                  <AppointmentRow
+                    key={appt.id}
+                    appt={appt}
+                    dim
+                    onView={() => setViewTarget(appt)}
+                  />
+                ))}
+              </Section>
+            )}
+
+            {/* Postponed */}
+            {postponed.length > 0 && (
+              <Section title="Postponed" count={postponed.length} accent="gray">
+                {postponed.map((appt) => (
                   <AppointmentRow
                     key={appt.id}
                     appt={appt}
@@ -222,7 +271,12 @@ export function Appointments() {
               <Row label="Status">
                 <Badge
                   label={viewTarget.status}
-                  variant={viewTarget.status === 'booked' ? 'teal' : 'red'}
+                  variant={
+                    viewTarget.status === 'booked' ? 'teal'
+                    : viewTarget.status === 'completed' ? 'green'
+                    : viewTarget.status === 'postponed' ? 'amber'
+                    : 'red'
+                  }
                 />
               </Row>
               <Row label="Start">{formatDateTime(viewTarget.start_time)}</Row>
@@ -406,18 +460,27 @@ function AppointmentRow({
   onView,
   onCancel,
   onReschedule,
+  onComplete,
+  onPostpone,
+  statusUpdating,
   dim,
 }: {
   appt: Appointment
   onView: () => void
   onCancel?: () => void
   onReschedule?: () => void
+  onComplete?: () => void
+  onPostpone?: () => void
+  statusUpdating?: boolean
   dim?: boolean
 }) {
   const isCancelled = appt.status === 'cancelled'
-  const isPast = !isCancelled && new Date(appt.start_time) < new Date()
-  const badgeVariant = isCancelled ? 'red' : isPast ? 'gray' : 'teal'
-  const badgeLabel = isCancelled ? 'cancelled' : isPast ? 'completed' : 'upcoming'
+  const isCompleted = appt.status === 'completed'
+  const isPostponed = appt.status === 'postponed'
+  const isOverdue = appt.status === 'booked' && new Date(appt.start_time) < new Date()
+  const badgeVariant = isCancelled ? 'red' : isCompleted ? 'green' : isPostponed ? 'amber' : isOverdue ? 'gray' : 'teal'
+  const badgeLabel = appt.status === 'booked' ? (isOverdue ? 'overdue' : 'upcoming') : appt.status
+  const isTerminal = isCancelled || isCompleted || isPostponed
   return (
     <li className={`flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
       dim ? 'opacity-55' : ''
@@ -444,7 +507,7 @@ function AppointmentRow({
           <Eye className="h-3.5 w-3.5" />
           View
         </button>
-        {!isCancelled && !isPast && onReschedule && (
+        {!isTerminal && onReschedule && (
           <button
             onClick={onReschedule}
             className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
@@ -453,7 +516,25 @@ function AppointmentRow({
             Reschedule
           </button>
         )}
-        {!isCancelled && !isPast && onCancel && (
+        {!isTerminal && onComplete && (
+          <button
+            onClick={onComplete}
+            disabled={statusUpdating}
+            className="flex items-center gap-1.5 rounded-lg border border-green-200 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
+          >
+            Complete
+          </button>
+        )}
+        {!isTerminal && onPostpone && (
+          <button
+            onClick={onPostpone}
+            disabled={statusUpdating}
+            className="flex items-center gap-1.5 rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+          >
+            Postpone
+          </button>
+        )}
+        {!isTerminal && onCancel && (
           <button
             onClick={onCancel}
             className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"

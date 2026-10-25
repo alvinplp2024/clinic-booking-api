@@ -302,3 +302,53 @@ def test_extra_opening_exception_adds_slots_outside_normal_hours(
     # The 18:00 and 18:30 slots from the extra period must be present.
     assert dtime(18, 0) in slot_starts
     assert dtime(18, 30) in slot_starts
+
+
+def test_mark_appointment_completed(client, clinic_setup):
+    start = future_slot(clinic_setup["target_date"], 10)
+    created = book(client, clinic_setup, start)
+    assert created.status_code == 201, created.text
+    appointment_id = created.json()["id"]
+
+    response = client.patch(
+        f"/appointments/{appointment_id}/status",
+        json={"status": "completed"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "completed"
+
+
+def test_mark_appointment_postponed(client, clinic_setup):
+    start = future_slot(clinic_setup["target_date"], 10)
+    created = book(client, clinic_setup, start)
+    assert created.status_code == 201, created.text
+    appointment_id = created.json()["id"]
+
+    response = client.patch(
+        f"/appointments/{appointment_id}/status",
+        json={"status": "postponed"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "postponed"
+
+
+def test_cannot_update_status_of_cancelled_appointment(client, clinic_setup):
+    start = future_slot(clinic_setup["target_date"], 10)
+    created = book(client, clinic_setup, start)
+    assert created.status_code == 201, created.text
+    appointment_id = created.json()["id"]
+
+    client.patch(
+        f"/appointments/{appointment_id}/cancel",
+        json={"reason": "No longer needed"},
+    )
+
+    response = client.patch(
+        f"/appointments/{appointment_id}/status",
+        json={"status": "completed"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "invalid_status_transition"

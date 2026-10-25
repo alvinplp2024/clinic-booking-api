@@ -43,7 +43,7 @@ tests/          → test suite
 | `Patient` | Same contact rules, but at least one of email or phone is required. |
 | `WorkingHours` | Recurring weekday periods per doctor. |
 | `ScheduleException` | Date-specific closure or extra opening period. |
-| `Appointment` | Doctor, patient, start/end (timezone-aware), status, cancellation metadata. Slots are 30 min; timezone defaults to `Africa/Nairobi`. |
+| `Appointment` | Doctor, patient, start/end (timezone-aware), status (`booked`, `cancelled`, `completed`, `postponed`), cancellation metadata. Slots are 30 min; timezone defaults to `Africa/Nairobi`. |
 
 **Concurrency**
 
@@ -77,6 +77,7 @@ Interactive docs at `/docs` when running. Full OpenAPI schema at `/openapi.json`
 | POST | `/appointments` | Book an appointment |
 | PATCH | `/appointments/{id}/cancel` | Cancel with a reason |
 | PATCH | `/appointments/{id}/reschedule` | Reschedule |
+| PATCH | `/appointments/{id}/status` | Mark as `completed` or `postponed` |
 
 **Status codes**
 
@@ -138,6 +139,59 @@ curl -X PATCH http://127.0.0.1:8000/appointments/1/reschedule \
 curl -X PATCH http://127.0.0.1:8000/appointments/1/cancel \
   -H 'Content-Type: application/json' \
   -d '{"reason":"Patient requested cancellation"}'
+
+# 8. Mark as completed or postponed (only booked appointments)
+curl -X PATCH http://127.0.0.1:8000/appointments/1/status \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"completed"}'
+```
+
+---
+
+## Running the project
+
+### Backend
+
+```bash
+# 1. Clone and set up the virtual environment
+git clone https://github.com/alvinplp2024/clinic-booking-api.git
+cd clinic-booking-api
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Create the database (run in psql)
+#    CREATE ROLE clinic_user WITH LOGIN PASSWORD 'your_password';
+#    CREATE DATABASE clinic_booking OWNER clinic_user;
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env and set DATABASE_URL, e.g.:
+# DATABASE_URL=postgresql+psycopg://clinic_user:your_password@localhost:5432/clinic_booking
+
+# 4. Apply migrations and verify
+alembic upgrade head
+alembic check
+
+# 5. Start the server
+python -m uvicorn app.main:app --reload
+# API explorer: http://127.0.0.1:8000/docs
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+# Edit .env — set VITE_API_BASE_URL=http://127.0.0.1:8000 (or leave blank for default)
+npm run dev
+# App: http://localhost:5173
+```
+
+Verify the frontend build before committing:
+
+```bash
+npm run lint && npm run build
 ```
 
 ---
@@ -148,45 +202,11 @@ curl -X PATCH http://127.0.0.1:8000/appointments/1/cancel \
 
 **Backend**
 
-```bash
-git clone https://github.com/alvinplp2024/clinic-booking-api.git
-cd clinic-booking-api
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Create a PostgreSQL role and database:
-
-```sql
-CREATE ROLE clinic_user WITH LOGIN PASSWORD 'your_password';
-CREATE DATABASE clinic_booking OWNER clinic_user;
-```
-
-Configure and run:
-
-```bash
-cp .env.example .env    # edit DATABASE_URL
-alembic upgrade head
-alembic check
-python -m uvicorn app.main:app --reload
-```
-
-API explorer: `http://127.0.0.1:8000/docs`
+See [Running the project](#running-the-project) above for the full setup steps.
 
 **Frontend**
 
-```bash
-cd frontend
-npm install
-cp .env.example .env    # edit VITE_API_BASE_URL if backend isn't on :8000
-npm run dev             # http://localhost:5173
-```
-
-Verify the build:
-
-```bash
-npm run lint && npm run build
-```
+See [Running the project](#running-the-project) above for the full setup steps.
 
 ---
 
@@ -204,7 +224,7 @@ If your password contains special characters (`@`, `#`, `&`, etc.), percent-enco
 
 Coverage includes: registration, contact validation, booking, conflicts, working
 hours, schedule exceptions, cancellation, rescheduling, availability, delete
-guards, CORS, and timezone handling (62 tests).
+guards, CORS, and timezone handling (65 tests).
 
 ---
 
@@ -262,6 +282,18 @@ GitHub Actions runs on every push and pull request targeting `main`: backend mig
 
 Amazon Q Developer, ChatGPT, and DeepSeek — across route handlers, SQLAlchemy
 models, Alembic migrations, test cases, React components, and documentation drafts.
+
+**Useful suggestion — appointment status transitions**
+
+Adding `completed` and `postponed` as first-class appointment statuses rather
+than treating them as frontend-only display states. The suggestion was to widen
+the database check constraint, add a dedicated `PATCH /appointments/{id}/status`
+endpoint, and guard transitions at the service layer (only `booked` appointments
+can be marked completed or postponed). This kept the state machine explicit and
+auditable via `AppointmentEvent` records. The migration, model constraint,
+schema, service, and frontend sections (Overdue section with Complete/Postpone
+buttons, new Completed/Postponed sections, badge colours) all came from this
+suggestion and were verified to work end-to-end.
 
 **Useful suggestion**
 

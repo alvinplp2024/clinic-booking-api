@@ -37,6 +37,10 @@ class AppointmentCancel(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
 
 
+class AppointmentStatusUpdate(BaseModel):
+    status: Literal["completed", "postponed"]
+
+
 class AppointmentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -45,7 +49,7 @@ class AppointmentRead(BaseModel):
     patient_id: int
     start_time: datetime
     end_time: datetime
-    status: Literal["booked", "cancelled"]
+    status: Literal["booked", "cancelled", "completed", "postponed"]
     cancellation_reason: str | None
     cancelled_at: datetime | None
     created_at: datetime

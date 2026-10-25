@@ -27,7 +27,7 @@ export interface AvailabilityRead {
   slots: AvailableSlot[]
 }
 
-export type AppointmentStatus = 'booked' | 'cancelled'
+export type AppointmentStatus = 'booked' | 'cancelled' | 'completed' | 'postponed'
 
 export interface Appointment {
   id: number

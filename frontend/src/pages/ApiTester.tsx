@@ -121,6 +121,12 @@ const ENDPOINTS: { group: string; items: EndpointDef[] }[] = [
         queryParams: [],
         defaultBody: JSON.stringify({ start_time: '2026-11-02T11:00:00+03:00' }, null, 2),
       },
+      {
+        id: 'status', method: 'PATCH', pathTemplate: '/appointments/{appointment_id}/status', label: 'Update appointment status',
+        pathParams: [{ name: 'appointment_id', label: 'Appointment ID', placeholder: '1' }],
+        queryParams: [],
+        defaultBody: JSON.stringify({ status: 'completed' }, null, 2),
+      },
     ],
   },
 ]
