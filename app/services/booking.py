@@ -342,6 +342,12 @@ def reschedule_booking(
                     409,
                     "appointment_cancelled",
                 )
+            if appointment.status in ("completed", "postponed"):
+                raise BookingError(
+                    f"A {appointment.status} appointment cannot be rescheduled.",
+                    409,
+                    "invalid_status_transition",
+                )
 
             new_start = _require_bookable_slot(
                 db,
@@ -373,6 +379,30 @@ def reschedule_booking(
             409,
             "slot_conflict",
         ) from exc
+
+
+def update_appointment_status(
+    db: Session, appointment_id: int, new_status: str
+) -> Appointment:
+    with db.begin():
+        appointment = db.get(Appointment, appointment_id)
+        if appointment is None:
+            raise BookingError("Appointment not found.", 404, "appointment_not_found")
+        if appointment.status != "booked":
+            raise BookingError(
+                f"Only booked appointments can be marked {new_status}.",
+                409,
+                "invalid_status_transition",
+            )
+        appointment.status = new_status
+        db.add(AppointmentEvent(
+            appointment_id=appointment.id,
+            event_type=new_status,
+            details=f"Status manually set to {new_status}.",
+        ))
+        db.flush()
+    db.refresh(appointment)
+    return appointment
 
 
 def get_patient_appointments(

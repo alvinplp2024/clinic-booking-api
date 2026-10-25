@@ -10,6 +10,7 @@ from app.schemas import (
     AppointmentCreate,
     AppointmentRead,
     AppointmentReschedule,
+    AppointmentStatusUpdate,
     AvailabilityRead,
     PatientAppointmentsRead,
 )
@@ -19,6 +20,7 @@ from app.services.booking import (
     get_availability,
     get_patient_appointments,
     reschedule_booking,
+    update_appointment_status,
 )
 
 router = APIRouter(tags=["Appointments"])
@@ -57,6 +59,18 @@ def book_appointment(
         patient_id=payload.patient_id,
         start_time=payload.start_time,
     )
+
+
+@router.patch(
+    "/appointments/{appointment_id}/status",
+    response_model=AppointmentRead,
+)
+def update_status(
+    appointment_id: int,
+    payload: AppointmentStatusUpdate,
+    db: Session = Depends(get_db),
+) -> AppointmentRead:
+    return update_appointment_status(db, appointment_id, payload.status)
 
 
 @router.patch(

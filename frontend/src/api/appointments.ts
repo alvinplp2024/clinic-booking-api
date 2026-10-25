@@ -28,3 +28,12 @@ export const rescheduleAppointment = (
     method: 'PATCH',
     body: JSON.stringify({ start_time }),
   })
+
+export const updateAppointmentStatus = (
+  appointmentId: number,
+  status: 'completed' | 'postponed',
+): Promise<Appointment> =>
+  apiFetch(`/appointments/${appointmentId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })

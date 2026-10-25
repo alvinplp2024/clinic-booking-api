@@ -92,7 +92,7 @@ class Appointment(Base):
             name="ck_appointment_end_after_start",
         ),
         CheckConstraint(
-            "status IN ('booked', 'cancelled')",
+            "status IN ('booked', 'cancelled', 'completed', 'postponed')",
             name="ck_appointment_valid_status",
         ),
         # The exclusion constraint preventing overlaps will be added
